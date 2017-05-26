@@ -1,6 +1,6 @@
 /*
  * Copyright © 2017 Bobulous <http://www.bobulous.org.uk/>.
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/.
@@ -283,5 +283,47 @@ public final class FIPS202 {
 		public String toString() {
 			return this.name();
 		}
+	}
+
+	/**
+	 * Returns a hexadecimal representation of the given byte array. This
+	 * conversion is based on the logic found in
+	 * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">FIPS
+	 * PUB 202</a> in appendix "B.1 Conversion Functions".
+	 * <p>
+	 * The first hexadecimal digit pair in the returned {@code String} will
+	 * represent the byte at index zero of the given array. The first
+	 * hexadecimal digit in each pair represents the value of the
+	 * most-significant four bits of the corresponding byte, and the second
+	 * hexadecimal digit in each pair represents the value of the
+	 * least-significant four bits of that same byte.</p>
+	 *
+	 * @param bytes the byte array, which can be empty but must not be
+	 * {@code null}.
+	 * @return a {@code String} which contains two hex digits for every byte in
+	 * the given array.
+	 */
+	public static String bytesToHex(byte[] bytes) {
+		Objects.requireNonNull(bytes);
+		StringBuilder hexString = new StringBuilder(bytes.length * 2);
+		for (byte b : bytes) {
+			appendByteAsHexPair(b, hexString);
+		}
+		return hexString.toString();
+	}
+
+	private static void appendByteAsHexPair(byte b, StringBuilder sb) {
+		byte leastSignificantHalf = (byte) (b & 0x0f);
+		byte mostSignificantHalf = (byte) ((b >> 4) & 0x0f);
+		sb.append(getHexDigitWithValue(mostSignificantHalf));
+		sb.append(getHexDigitWithValue(leastSignificantHalf));
+	}
+
+	private static char getHexDigitWithValue(byte value) {
+		assert value >= 0 && value <= 16;
+		if (value < 10) {
+			return (char) ('0' + value);
+		}
+		return (char) ('A' + value - 10);
 	}
 }
