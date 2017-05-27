@@ -303,7 +303,7 @@ public final class FIPS202 {
 	 * @return a {@code String} which contains two hex digits for every byte in
 	 * the given array.
 	 */
-	public static String bytesToHex(byte[] bytes) {
+	public static String hexFromBytes(byte[] bytes) {
 		Objects.requireNonNull(bytes);
 		StringBuilder hexString = new StringBuilder(bytes.length * 2);
 		for (byte b : bytes) {
