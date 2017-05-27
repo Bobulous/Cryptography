@@ -350,20 +350,23 @@ final class KeccakState {
 		laneArray[3][1] = b[3][1] ^ (b[4][1] | b[0][1]);
 		laneArray[4][1] = b[4][1] ^ (b[0][1] & b[1][1]);
 
+		long invertedLaneThreeTwo = not(b[3][2]);
 		laneArray[0][2] = b[0][2] ^ (b[1][2] | b[2][2]);
 		laneArray[1][2] = b[1][2] ^ (b[2][2] & b[3][2]);
-		laneArray[2][2] = b[2][2] ^ (not(b[3][2]) & b[4][2]);
-		laneArray[3][2] = not(b[3][2]) ^ (b[4][2] | b[0][2]);
+		laneArray[2][2] = b[2][2] ^ (invertedLaneThreeTwo & b[4][2]);
+		laneArray[3][2] = invertedLaneThreeTwo ^ (b[4][2] | b[0][2]);
 		laneArray[4][2] = b[4][2] ^ (b[0][2] & b[1][2]);
 
+		long invertedLaneThreeThree = not(b[3][3]);
 		laneArray[0][3] = b[0][3] ^ (b[1][3] & b[2][3]);
 		laneArray[1][3] = b[1][3] ^ (b[2][3] | b[3][3]);
-		laneArray[2][3] = b[2][3] ^ (not(b[3][3]) | b[4][3]);
-		laneArray[3][3] = not(b[3][3]) ^ (b[4][3] & b[0][3]);
+		laneArray[2][3] = b[2][3] ^ (invertedLaneThreeThree | b[4][3]);
+		laneArray[3][3] = invertedLaneThreeThree ^ (b[4][3] & b[0][3]);
 		laneArray[4][3] = b[4][3] ^ (b[0][3] | b[1][3]);
 
-		laneArray[0][4] = b[0][4] ^ (not(b[1][4]) & b[2][4]);
-		laneArray[1][4] = not(b[1][4]) ^ (b[2][4] | b[3][4]);
+		long invertedLaneOneFour = not(b[1][4]);
+		laneArray[0][4] = b[0][4] ^ (invertedLaneOneFour & b[2][4]);
+		laneArray[1][4] = invertedLaneOneFour ^ (b[2][4] | b[3][4]);
 		laneArray[2][4] = b[2][4] ^ (b[3][4] & b[4][4]);
 		laneArray[3][4] = b[3][4] ^ (b[4][4] | b[0][4]);
 		laneArray[4][4] = b[4][4] ^ (b[0][4] & b[1][4]);
