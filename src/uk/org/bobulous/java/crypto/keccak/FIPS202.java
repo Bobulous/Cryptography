@@ -304,7 +304,7 @@ public final class FIPS202 {
 	 * the given array.
 	 */
 	public static String hexFromBytes(byte[] bytes) {
-		Objects.requireNonNull(bytes);
+		Objects.requireNonNull(bytes, "Parameter `bytes` cannot be null.");
 		StringBuilder hexString = new StringBuilder(bytes.length * 2);
 		for (byte b : bytes) {
 			appendByteAsHexPair(b, hexString);
@@ -313,6 +313,7 @@ public final class FIPS202 {
 	}
 
 	private static void appendByteAsHexPair(byte b, StringBuilder sb) {
+		assert sb != null;
 		byte leastSignificantHalf = (byte) (b & 0x0f);
 		byte mostSignificantHalf = (byte) ((b >> 4) & 0x0f);
 		sb.append(getHexDigitWithValue(mostSignificantHalf));
@@ -325,5 +326,66 @@ public final class FIPS202 {
 			return (char) ('0' + value);
 		}
 		return (char) ('A' + value - 10);
+	}
+
+	/**
+	 * Returns a byte array which represents the given hexadecimal string. This
+	 * conversion is based on the logic found in
+	 * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">FIPS
+	 * PUB 202</a> in appendix "B.1 Conversion Functions".
+	 * <p>
+	 * The hexadecimal string provided to this method must be an even number of
+	 * hexadecimal digits [0-9A-F] (case insensitive), such that each hex pair
+	 * will represent one byte in the returned array. An empty string will lead
+	 * to an empty byte array being returned.</p>
+	 * <p>
+	 * The byte at index zero of the returned array will take its value from the
+	 * first hexadecimal digit pair in the given {@code String}. The first
+	 * hexadecimal digit in each pair represents the value of the
+	 * most-significant four bits of the corresponding byte, and the second
+	 * hexadecimal digit in each pair represents the value of the
+	 * least-significant four bits of that same byte.</p>
+	 *
+	 * @param hex a {@code String} which contains an even number of hexadecimal
+	 * digits. Can be empty but must not be {@code null}.
+	 * @return an array of byte values based on the provided hexadecimal string.
+	 */
+	public static byte[] bytesFromHex(String hex) {
+		Objects.requireNonNull(hex, "Parameter `hex` cannot be null.");
+		int hexLength = hex.length();
+		if (hexLength % 2 != 0) {
+			throw new IllegalArgumentException(
+					"Hexadecimal string must be composed of hexadecimal pairs.");
+		}
+		byte[] bytes = new byte[hexLength / 2];
+		for (int charIndex = 0; charIndex < hexLength; charIndex += 2) {
+			bytes[charIndex / 2] = byteValueOfHexPairAtIndex(hex, charIndex);
+		}
+		return bytes;
+	}
+
+	private static byte byteValueOfHexPairAtIndex(String hex, int charIndex) {
+		assert hex != null;
+		assert charIndex >= 0;
+		char mostSignificantHexDigit = hex.charAt(charIndex);
+		byte hexPairValue = (byte) (16
+				* valueOfHexDigit(mostSignificantHexDigit));
+		char leastSignificantHexDigit = hex.charAt(charIndex + 1);
+		hexPairValue += valueOfHexDigit(leastSignificantHexDigit);
+		return hexPairValue;
+	}
+
+	private static byte valueOfHexDigit(char hexDigit) {
+		if ('0' <= hexDigit && hexDigit <= '9') {
+			return (byte) (hexDigit - '0');
+		}
+		if ('A' <= hexDigit && hexDigit <= 'F') {
+			return (byte) (10 + hexDigit - 'A');
+		}
+		if ('a' <= hexDigit && hexDigit <= 'f') {
+			return (byte) (10 + hexDigit - 'a');
+		}
+		throw new IllegalArgumentException(
+				"hexDigit must be from character set [a-fA-F0-9].");
 	}
 }
