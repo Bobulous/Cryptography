@@ -328,8 +328,6 @@ public final class FIPS202 {
 		return (char) ('A' + value - 10);
 	}
 
-	// TODO: Implement the binaryFromHex method !!!
-	
 	/**
 	 * Returns a hexadecimal {@code String} representation of the given binary
 	 * bit string. This method is based on the logic described in
@@ -442,6 +440,104 @@ public final class FIPS202 {
 			return (byte) (10 + hexDigit - 'a');
 		}
 		throw new IllegalArgumentException(
-				"hexDigit must be from character set [a-fA-F0-9].");
+				"hexDigit must be from character set [0-9A-F] (case insensitive).");
+	}
+
+	/**
+	 * Returns a bit string representation of the given hexadecimal
+	 * {@code String}, with exactly the specified number of bits. This method is
+	 * based on the logic described in
+	 * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">FIPS
+	 * PUB 202</a> in appendix "B.1 Conversion Functions", in particular
+	 * "Algorithm 10: h2b(H, n)".
+	 * <p>
+	 * The hexadecimal will be read so that the first hex pair generates the
+	 * first eight bits of the resulting bit string (or fewer if the requested
+	 * bit limit is less than eight bits). The first hexadecimal digit of the
+	 * pair determines the most-significant four bits, and the second
+	 * hexadecimal digit the least-significant four bits.</p>
+	 * <p>
+	 * The returned bit string will be formed such that the least-significant
+	 * bits come first, so where this method is concerned the bit string "0001"
+	 * represents the decimal value 8 (0*2^0 + 0*2^1 + 0*2^2 + 1*2^3). As an
+	 * example, the hex "21" will generate bit string "10000100" (assuming the
+	 * full bit limit of 8 has been specified).</p>
+	 * <p>
+	 * If the specified bit limit is less than the number of bits which could be
+	 * represented by the given hexadecimal string, then the returned bit string
+	 * will represent only some initial portion of the hex string (left-most hex
+	 * digits first, least significant bits first). If the specified bit limit
+	 * is zero then this method will return an empty {@code String}.</p>
+	 *
+	 * @param hex a {@code String} which contains any number of hex digit pairs,
+	 * so that the number of hex digits must be even. Can be empty but must not
+	 * be {@code null}.
+	 * @param bitLimit the length in bits of the generated bit string. Must not
+	 * be negative, and must not be greater than the maximum number of bits
+	 * which can be represented by the given hex string.
+	 * @return a {@code String} representing a bit string of exactly the length
+	 * given by {@code bitLimit}.
+	 */
+	public static String binaryFromHex(String hex, int bitLimit) {
+		validateHexString(hex);
+		validateBitLimit(hex, bitLimit);
+		int byteLimit = (bitLimit + 8 - 1) / 8;
+		int hexDigitLimit = byteLimit * 2;
+		StringBuilder bitString = new StringBuilder(bitLimit);
+		for (int hexCharIndex = 0, bitsSoFar = 0;
+				hexCharIndex < hexDigitLimit && bitsSoFar < bitLimit;
+				hexCharIndex += 2, bitsSoFar += 8) {
+			byte hexPairValue = byteValueOfHexPairAtIndex(hex, hexCharIndex);
+			int bitsRequiredFromHexPair = Math.min(8, bitLimit - bitsSoFar);
+			appendBitsFromByte(hexPairValue, bitsRequiredFromHexPair, bitString);
+		}
+		return bitString.toString();
+	}
+
+	private static void validateHexString(String hex) {
+		Objects.requireNonNull(hex, "Parameter `hex` cannot be null.");
+		int hexLength = hex.length();
+		if (hexLength % 2 != 0) {
+			throw new IllegalArgumentException(
+					"String `hex` must contain an even number of hex digits.");
+		}
+		for (int charIndex = 0; charIndex < hexLength; ++charIndex) {
+			char hexDigit = hex.charAt(charIndex);
+			if (!isValidHexDigit(hexDigit)) {
+				throw new IllegalArgumentException(
+						"String `hex` can only contain hex digits [0-9A-F] (case insensitive).");
+			}
+		}
+	}
+
+	private static void validateBitLimit(String hex, int bitLimit) {
+		if (bitLimit < 0) {
+			throw new IllegalArgumentException("bitLimit cannot be negative.");
+		}
+		if (bitLimit > hex.length() * Byte.SIZE / 2) {
+			throw new IllegalArgumentException(
+					"bitLimit cannot exceed the number of bits represented by the hex string.");
+		}
+	}
+
+	private static boolean isValidHexDigit(char hexDigit) {
+		if ('0' <= hexDigit && hexDigit <= '9') {
+			return true;
+		}
+		if ('A' <= hexDigit && hexDigit <= 'F') {
+			return true;
+		}
+		if ('a' <= hexDigit && hexDigit <= 'f') {
+			return true;
+		}
+		return false;
+	}
+
+	private static void appendBitsFromByte(byte value, int bitsRequired,
+			StringBuilder bitString) {
+		for (byte bitIndex = 0; bitIndex < bitsRequired; ++bitIndex) {
+			boolean bitHigh = (value & (byte) (1 << bitIndex)) != 0;
+			bitString.append(bitHigh ? '1' : '0');
+		}
 	}
 }
