@@ -328,6 +328,62 @@ public final class FIPS202 {
 		return (char) ('A' + value - 10);
 	}
 
+	// TODO: Implement the binaryFromHex method !!!
+	
+	/**
+	 * Returns a hexadecimal {@code String} representation of the given binary
+	 * bit string. This method is based on the logic described in
+	 * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">FIPS
+	 * PUB 202</a> in appendix "B.1 Conversion Functions", in particular
+	 * "Algorithm 11: b2h(S)".
+	 * <p>
+	 * The bit string is such that the least-significant bits come first, so
+	 * where this method is concerned the bit string "0001" represents the
+	 * decimal value 8 (0*2^0 + 0*2^1 + 0*2^2 + 1*2^3). The returned hexadecimal
+	 * is such that the first hex pair represents the value of the first eight
+	 * bits of the bit string (or fewer if the length of the bit string is less
+	 * than eight), and the first first hexadecimal digit of each pair
+	 * represents the value of the most-significant four bits, and the second
+	 * hexadecimal digit represents the value of the least-significant four
+	 * digits. If the total length of the bit string is not exactly divisible by
+	 * eight then the final hex pair will represent the bit string as though it
+	 * was filled with zero bits up to the length of the next whole byte.</p>
+	 * <p>
+	 * The given bit string can be any length, but the returned hexadecimal
+	 * representation will always contain a multiple of hex pairs. If the bit
+	 * string is empty then the returned hexadecimal string will be empty.</p>
+	 *
+	 * @param bitString a {@code String} which contains only '0' and '1' binary
+	 * digits. Can be empty, but must not be {@code null}.
+	 * @return a {@code String} which contains a hexadecimal representation of
+	 * the given binary.
+	 */
+	public static String hexFromBinary(String bitString) {
+		Objects.requireNonNull(bitString,
+				"Parameter `bitString` must not be null.");
+		StringBuilder hexString = new StringBuilder(
+				(bitString.length() + 8 - 1) / 8);
+		for (int bitIndex = 0; bitIndex < bitString.length(); bitIndex += 8) {
+			byte byteValue = byteValueOfBinaryAtIndex(bitIndex, bitString);
+			appendByteAsHexPair(byteValue, hexString);
+		}
+		return hexString.toString();
+	}
+
+	private static byte byteValueOfBinaryAtIndex(int bitIndex, String bitString) {
+		int bitsRemaining = bitString.length() - bitIndex;
+		int byteBitStopIndex = Math.min(8, bitsRemaining);
+		byte byteValue = (byte) 0;
+		for (int byteBitIndex = 0; byteBitIndex < byteBitStopIndex;
+				++byteBitIndex) {
+			if (bitString.charAt(bitIndex + byteBitIndex) == '0') {
+				continue;
+			}
+			byteValue += (byte) (1 << byteBitIndex);
+		}
+		return byteValue;
+	}
+
 	/**
 	 * Returns a byte array which represents the given hexadecimal string. This
 	 * conversion is based on the logic found in
