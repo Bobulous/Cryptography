@@ -1,6 +1,6 @@
 /*
  * Copyright © 2017 Bobulous <http://www.bobulous.org.uk/>.
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/.
@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -31,7 +30,7 @@ import java.util.function.UnaryOperator;
  * <a href="http://keccak.noekeon.org/"><span style="font-variant: small-caps">Keccak</span>
  * sponge function family</a>
  * created by <cite>Guido Bertoni, Joan Daemen, Michaël Peeters, and Gilles Van
- * Assche</cite>. fully defined by <b>The
+ * Assche</cite>. Detailed specifications are defined by <b>The
  * <span style="font-variant: small-caps">Keccak</span> Reference version
  * 3.0</b>
  * [January 2011].
@@ -72,47 +71,9 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		VALID_WIDTHS = Collections.unmodifiableSet(widths);
 	}
 
-	/**
-	 * The rotation constants used in the rho permutation step. The values here
-	 * assume a lane length of 64 bits, and must be adjusted for any Keccak
-	 * sponge function which uses shorter lanes.
-	 */
-	private static final byte[][] RAW_ROTATION_CONSTANTS;
-
-	static {
-		byte[][] rotOffsets = new byte[5][5];
-		rotOffsets[0] = new byte[]{(byte) 0,
-			(byte) 36,
-			(byte) 3,
-			(byte) 41,
-			(byte) 18};
-		rotOffsets[1] = new byte[]{(byte) 1,
-			(byte) 44,
-			(byte) 10,
-			(byte) 45,
-			(byte) 2};
-		rotOffsets[2] = new byte[]{(byte) 62,
-			(byte) 6,
-			(byte) 43,
-			(byte) 15,
-			(byte) 61};
-		rotOffsets[3] = new byte[]{(byte) 28,
-			(byte) 55,
-			(byte) 25,
-			(byte) 21,
-			(byte) 56};
-		rotOffsets[4] = new byte[]{(byte) 27,
-			(byte) 20,
-			(byte) 39,
-			(byte) 8,
-			(byte) 14};
-		RAW_ROTATION_CONSTANTS = rotOffsets;
-	}
-
 	private final short bitrate;
 	private final short capacity;
 	private final byte laneLength;
-	private final int numberOfRoundsPerPermutation;
 	private final int outputLengthInBits;
 
 	/**
@@ -127,19 +88,6 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 * function family: Specifications summary</a>.</p>
 	 */
 	private final String suffixBits;
-
-	/**
-	 * The rotation constants which apply to this Keccak sponge. This array is
-	 * populated by the constructor and thereafter must be treated as read-only.
-	 */
-	private final byte[][] rotationConstants;
-
-	/**
-	 * The round constants which will apply to the state permutations of this
-	 * Keccak sponge function. This array is populated by the constructor and
-	 * thereafter must be treated as read-only.
-	 */
-	private final long[] roundConstants;
 
 	/**
 	 * Returns the bitrate of this {@code KeccakSponge} instance. The bitrate is
@@ -200,7 +148,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 * @return the number of rounds in each permutation.
 	 */
 	public int getNumberOfRoundsPerPermutation() {
-		return numberOfRoundsPerPermutation;
+		return KeccakUtilities.getNumberOfRoundsPerPermutationWithLaneLength(
+				laneLength);
 	}
 
 	/**
@@ -306,59 +255,6 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		this.suffixBits = suffixBits;
 		this.laneLength = (byte) (width / 25);
 		this.outputLengthInBits = outputLength;
-		this.numberOfRoundsPerPermutation = getNumberOfRounds(laneLength);
-		this.roundConstants = buildRoundConstants();
-		this.rotationConstants = adjustRotationConstants();
-	}
-
-	/**
-	 * Calculates the round constant values which apply to this Keccak sponge
-	 * function. The values vary by permutation width, and the quantity is equal
-	 * to the number of rounds which will be applied during each permutation.
-	 *
-	 * @return a {@code long[]} such that each array index aligns with a
-	 * permutation round index.
-	 */
-	private long[] buildRoundConstants() {
-		long[] array = new long[numberOfRoundsPerPermutation];
-		int l = getBinaryExponent(laneLength);
-		for (int roundIndex = 0; roundIndex < numberOfRoundsPerPermutation;
-				++roundIndex) {
-			long roundConstant = 0L;
-			for (int j = 0; j <= l; ++j) {
-				int index = (int) Math.pow(2.0, j) - 1;
-				boolean isHigh = rc(j + 7 * roundIndex);
-//				roundConstant.set(index, isHigh);
-				if (isHigh) {
-					roundConstant += 1L << index;
-				}
-			}
-			array[roundIndex] = roundConstant;
-		}
-		return array;
-	}
-
-	/**
-	 * Returns a two-dimensional array of rotation offset values which apply to
-	 * this Keccak sponge function. This method adjusts the master set of
-	 * rotation offsets in cases where the lane length is less than 64 bits.
-	 *
-	 * @return a 5×5 byte array which contains the rotation offsets, such that
-	 * result[x][y] will contain the rotation offset which should be applied to
-	 * lane [x][y] by the iota transform during permutation.
-	 */
-	private byte[][] adjustRotationConstants() {
-		if (laneLength == 64) {
-			return RAW_ROTATION_CONSTANTS;
-		}
-		byte[][] moduloRotations = new byte[5][5];
-		for (int x = 0; x < 5; ++x) {
-			for (int y = 0; y < 5; ++y) {
-				moduloRotations[x][y] = (byte) (RAW_ROTATION_CONSTANTS[x][y]
-						% laneLength);
-			}
-		}
-		return moduloRotations;
 	}
 
 	/**
@@ -440,11 +336,26 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		moveMessageBitsIntoInput(message, messageLengthInBits, input);
 		appendDomainSuffixToInput(input, messageLengthInBits);
 		padInput(input, messageLengthInBits);
-		KeccakState state = new KeccakState(laneLength,
-				numberOfRoundsPerPermutation, roundConstants, rotationConstants);
+		KeccakState state = createKeccakStateForLength(laneLength);
 		state.absorb(input, inputLengthInBits, bitrate);
 		byte[] hash = state.squeeze(bitrate, outputLengthInBits);
 		return hash;
+	}
+
+	private KeccakState createKeccakStateForLength(int laneLength) {
+		switch (laneLength) {
+			case 64:
+				return new KeccakState1600();
+			case 32:
+				return new KeccakState800();
+			case 16:
+				return new KeccakState400();
+			case 8:
+				return new KeccakState200();
+			default:
+				throw new UnsupportedOperationException(
+						"Permutation width currently not supported.");
+		}
 	}
 
 	/**
@@ -475,15 +386,14 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		// TODO: Add support for cases where bitrate is not divisible by 8.
 		requireWholeByteBitrate(bitrate);
 		Objects.requireNonNull(stream);
-		KeccakState state = new KeccakState(laneLength,
-				numberOfRoundsPerPermutation, roundConstants, rotationConstants);
+		KeccakState state = createKeccakStateForLength(laneLength);
 		byte[] block = createSufficientlyLargeByteArray(bitrate);
 		int finalBlockMessageBits = absorbInitialStreamBlocksIntoState(stream,
 				block, state);
 		byte[] finalBlock = prepareFinalBlockArray(finalBlockMessageBits, block);
 		appendDomainSuffixToInput(finalBlock, finalBlockMessageBits);
 		padInput(finalBlock, finalBlockMessageBits);
-		state.absorb(finalBlock, finalBlock.length * 8, bitrate);
+		state.absorb(finalBlock, finalBlock.length * Byte.SIZE, bitrate);
 		byte[] hash = state.squeeze(bitrate, outputLengthInBits);
 		return hash;
 	}
@@ -539,8 +449,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 			boolean suffixBitHigh = suffixBits.charAt(suffixBitIndex) == '1';
 			if (suffixBitHigh) {
 				int targetInputBit = suffixStartBitIndex + suffixBitIndex;
-				int targetInputByte = targetInputBit / 8;
-				int targetInputByteBitIndex = targetInputBit % 8;
+				int targetInputByte = targetInputBit / Byte.SIZE;
+				int targetInputByteBitIndex = targetInputBit % Byte.SIZE;
 				input[targetInputByte] += 1 << targetInputByteBitIndex;
 			}
 		}
@@ -585,10 +495,10 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	private void setInputBitHigh(byte[] input, int inputBitIndex) {
 		assert input != null;
 		assert inputBitIndex >= 0;
-		int outputByteIndex = inputBitIndex / 8;
-		byte outputByteBitIndex = (byte) (inputBitIndex % 8);
+		int inputByteIndex = inputBitIndex / Byte.SIZE;
+		byte outputByteBitIndex = (byte) (inputBitIndex % Byte.SIZE);
 		byte byteBitValue = (byte) (1 << outputByteBitIndex);
-		input[outputByteIndex] += byteBitValue;
+		input[inputByteIndex] += byteBitValue;
 	}
 
 	/**
@@ -633,16 +543,17 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 * @param stream an {@code InputStream} which provides the input message
 	 * bytes.
 	 * @param block the array into which the message bytes should be read.
-	 * @return the total number of bytes which were filled in the {@code block}
+	 * @return the total number of bits which were filled in the {@code block}
 	 * array. If the stream ends then this number may be lower than the the size
-	 * of the array.
+	 * of the array, and the remainder of the array will be filled with zero
+	 * bits.
 	 * @throws IOException if an {@code IOException} is thrown by any of the
 	 * stream reading operations.
 	 */
 	private int readBlockFromStream(InputStream stream, byte[] block) throws
 			IOException {
 		assert block != null;
-		assert block.length * 8 == bitrate;
+		assert block.length * Byte.SIZE == bitrate;
 		assert stream != null;
 		int filledBytes = 0;
 		int readBytes = stream.read(block);
@@ -654,7 +565,7 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		if (filledBytes < block.length) {
 			Arrays.fill(block, filledBytes, block.length, (byte) 0);
 		}
-		return filledBytes * 8;
+		return filledBytes * Byte.SIZE;
 	}
 
 	/**
@@ -662,33 +573,34 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 * (read from an {@code InputStream}), and any suffix bits, and the pad10*1
 	 * padding bits.
 	 *
-	 * @param finalBlockMessageLength the number of message bits in the final
-	 * block which was read from the stream.
+	 * @param finalBlockMessageLengthInBits the number of message bits in the
+	 * final block which was read from the stream.
 	 * @param finalBlock the byte array which holds the final message bits.
 	 * @return a byte array which is sufficiently large to hold all of the final
 	 * message bits, suffix bits, and padding.
 	 */
-	private byte[] prepareFinalBlockArray(int finalBlockMessageLength,
+	private byte[] prepareFinalBlockArray(int finalBlockMessageLengthInBits,
 			byte[] finalBlock) {
-		assert finalBlockMessageLength >= 0;
+		assert finalBlockMessageLengthInBits >= 0;
 		assert finalBlock != null;
 		int minimumLengthAfterPadding = calculateMinimumLengthAfterPadding(
-				finalBlockMessageLength);
+				finalBlockMessageLengthInBits);
 		if (minimumLengthAfterPadding <= bitrate) {
 			// The existing byte array is large enough so simply return it.
 			return finalBlock;
 		} else {
-			return resizedFinalBlockArray(finalBlockMessageLength, finalBlock,
-					minimumLengthAfterPadding);
+			return resizedFinalBlockArray(finalBlockMessageLengthInBits,
+					finalBlock, minimumLengthAfterPadding);
 		}
 	}
 
-	private byte[] resizedFinalBlockArray(int finalBlockMessageLength,
+	private byte[] resizedFinalBlockArray(int finalBlockMessageLengthInBits,
 			byte[] finalBlock, int minimumLengthAfterPadding) {
 		int blocksRequired
 				= divideThenRoundUp(minimumLengthAfterPadding, bitrate);
-		byte[] finalBlocks = new byte[blocksRequired * bitrate / 8];
-		int bytesToCopy = divideThenRoundUp(finalBlockMessageLength, 8);
+		byte[] finalBlocks = new byte[blocksRequired * bitrate / Byte.SIZE];
+		int bytesToCopy = divideThenRoundUp(finalBlockMessageLengthInBits,
+				Byte.SIZE);
 		System.arraycopy(finalBlock, 0, finalBlocks, 0, bytesToCopy);
 		return finalBlocks;
 	}
@@ -754,7 +666,7 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 			throw new IllegalArgumentException(
 					"bitrate must be greater than zero.");
 		}
-		if (bitrate % 8 != 0) {
+		if (bitrate % Byte.SIZE != 0) {
 			// TODO: Find KATs for Keccak with non-whole-byte bitrates, and add support to this library.
 			throw new UnsupportedOperationException(
 					"Currently only bitrates exactly divisible by 8 are supported.");
@@ -812,71 +724,13 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		}
 	}
 
-	/**
-	 * Returns the number of rounds (within every permutation) which should be
-	 * applied for a Keccak sponge with the specified lane length.
-	 *
-	 * @param laneLengthInBits the length of each lane, in bits.
-	 * @return the number of rounds for each permutation.
-	 */
-	private static byte getNumberOfRounds(byte laneLengthInBits) {
-		switch (laneLengthInBits) {
-			case 1:
-				return 12;
-			case 2:
-				return 14;
-			case 4:
-				return 16;
-			case 8:
-				return 18;
-			case 16:
-				return 20;
-			case 32:
-				return 22;
-			case 64:
-				return 24;
-			default:
-				throw new IllegalArgumentException("Illegal lane size: "
-						+ laneLengthInBits);
-		}
-	}
-
-	/**
-	 * Returns the base two logarithm of the supplied lane length. The resulting
-	 * exponent is used in calculating round constants.
-	 *
-	 * @param laneLengthInBits the length of each lane, in bits.
-	 * @return the base two logarithm of the given lane length.
-	 */
-	private static byte getBinaryExponent(byte laneLengthInBits) {
-		switch (laneLengthInBits) {
-			case 1:
-				return 0;
-			case 2:
-				return 1;
-			case 4:
-				return 2;
-			case 8:
-				return 3;
-			case 16:
-				return 4;
-			case 32:
-				return 5;
-			case 64:
-				return 6;
-			default:
-				throw new IllegalArgumentException("Illegal lane size: "
-						+ laneLengthInBits);
-		}
-	}
-
 	private static void validateMessageLength(byte[] message,
 			int messageLengthInBits) {
 		if (messageLengthInBits < 0) {
 			throw new IllegalArgumentException(
 					"messageLengthInBits cannot be negative.");
 		}
-		if (messageLengthInBits > message.length * 8) {
+		if (messageLengthInBits > message.length * Byte.SIZE) {
 			throw new IllegalArgumentException(
 					"messageLengthInBits cannot be greater than the bit length of the message byte array.");
 		}
@@ -896,8 +750,9 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		assert message != null;
 		assert messageLengthInBits >= 0;
 		assert input != null;
-		if (messageLengthInBits % 8 == 0) {
-			System.arraycopy(message, 0, input, 0, messageLengthInBits / 8);
+		if (messageLengthInBits % Byte.SIZE == 0) {
+			System.arraycopy(message, 0, input, 0, messageLengthInBits
+					/ Byte.SIZE);
 		} else {
 			partialByteCopy(message, input, messageLengthInBits);
 		}
@@ -917,9 +772,9 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		assert source != null;
 		assert destination != null;
 		assert bitLimit >= 0;
-		int wholeByteCount = bitLimit / 8;
+		int wholeByteCount = bitLimit / Byte.SIZE;
 		System.arraycopy(source, 0, destination, 0, wholeByteCount);
-		int remainingBits = bitLimit % 8;
+		int remainingBits = bitLimit % Byte.SIZE;
 		for (int bitIndex = 0; bitIndex < remainingBits; ++bitIndex) {
 			int bitValue = (1 << bitIndex);
 			boolean sourceBitHigh = (source[wholeByteCount] & bitValue) != 0;
@@ -931,7 +786,7 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 
 	private static void requireWholeByteBitrate(int bitrate) {
 		assert bitrate > 0;
-		if (bitrate % 8 != 0) {
+		if (bitrate % Byte.SIZE != 0) {
 			throw new UnsupportedOperationException(
 					"bitrate must be divisible by eight in order to process byte stream.");
 		}
@@ -947,35 +802,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 */
 	private static byte[] createSufficientlyLargeByteArray(int bitCount) {
 		assert bitCount > 0;
-		int bytesRequired = divideThenRoundUp(bitCount, 8);
+		int bytesRequired = divideThenRoundUp(bitCount, Byte.SIZE);
 		return new byte[bytesRequired];
-	}
-
-	/**
-	 * Used as part of the calculation of the Round Constant.
-	 * <p>
-	 * This code is based on "Algorithm 5: rc(t)" in
-	 * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf">FIPS
-	 * PUB 202</a>.
-	 * </p>
-	 */
-	private static boolean rc(int t) {
-		assert t >= 0 && t <= 167;
-		t = t % 255;
-		if (t == 0) {
-			return true;
-		}
-		BitSet r = new BitSet(8 + t);
-		int zeroIndex = t;
-		r.set(zeroIndex, true);
-		for (int i = 1; i <= t; ++i) {
-			--zeroIndex;
-			r.set(zeroIndex, r.get(zeroIndex) ^ r.get(zeroIndex + 8));
-			r.set(zeroIndex + 4, r.get(zeroIndex + 4) ^ r.get(zeroIndex + 8));
-			r.set(zeroIndex + 5, r.get(zeroIndex + 5) ^ r.get(zeroIndex + 8));
-			r.set(zeroIndex + 6, r.get(zeroIndex + 6) ^ r.get(zeroIndex + 8));
-		}
-		return r.get(zeroIndex);
 	}
 
 	/*
