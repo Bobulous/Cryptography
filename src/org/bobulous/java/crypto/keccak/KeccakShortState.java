@@ -164,12 +164,60 @@ abstract class KeccakShortState extends KeccakState {
 
 	@Override
 	void rhoPi() {
-		for (int x = 0; x < 5; ++x) {
-			for (int y = 0; y < 5; ++y) {
-				b[y][(2 * x + 3 * y) % 5] = rotateLane(laneArray[x][y],
-						getRotationConstantForLane(x, y));
-			}
-		}
+		b[0][0] = rotateLane(laneArray[0][0],
+				getRotationConstantForLane(0, 0));
+		b[1][3] = rotateLane(laneArray[0][1],
+				getRotationConstantForLane(0, 1));
+		b[2][1] = rotateLane(laneArray[0][2],
+				getRotationConstantForLane(0, 2));
+		b[3][4] = rotateLane(laneArray[0][3],
+				getRotationConstantForLane(0, 3));
+		b[4][2] = rotateLane(laneArray[0][4],
+				getRotationConstantForLane(0, 4));
+
+		b[0][2] = rotateLane(laneArray[1][0],
+				getRotationConstantForLane(1, 0));
+		b[1][0] = rotateLane(laneArray[1][1],
+				getRotationConstantForLane(1, 1));
+		b[2][3] = rotateLane(laneArray[1][2],
+				getRotationConstantForLane(1, 2));
+		b[3][1] = rotateLane(laneArray[1][3],
+				getRotationConstantForLane(1, 3));
+		b[4][4] = rotateLane(laneArray[1][4],
+				getRotationConstantForLane(1, 4));
+
+		b[0][4] = rotateLane(laneArray[2][0],
+				getRotationConstantForLane(2, 0));
+		b[1][2] = rotateLane(laneArray[2][1],
+				getRotationConstantForLane(2, 1));
+		b[2][0] = rotateLane(laneArray[2][2],
+				getRotationConstantForLane(2, 2));
+		b[3][3] = rotateLane(laneArray[2][3],
+				getRotationConstantForLane(2, 3));
+		b[4][1] = rotateLane(laneArray[2][4],
+				getRotationConstantForLane(2, 4));
+
+		b[0][1] = rotateLane(laneArray[3][0],
+				getRotationConstantForLane(3, 0));
+		b[1][4] = rotateLane(laneArray[3][1],
+				getRotationConstantForLane(3, 1));
+		b[2][2] = rotateLane(laneArray[3][2],
+				getRotationConstantForLane(3, 2));
+		b[3][0] = rotateLane(laneArray[3][3],
+				getRotationConstantForLane(3, 3));
+		b[4][3] = rotateLane(laneArray[3][4],
+				getRotationConstantForLane(3, 4));
+
+		b[0][3] = rotateLane(laneArray[4][0],
+				getRotationConstantForLane(4, 0));
+		b[1][1] = rotateLane(laneArray[4][1],
+				getRotationConstantForLane(4, 1));
+		b[2][4] = rotateLane(laneArray[4][2],
+				getRotationConstantForLane(4, 2));
+		b[3][2] = rotateLane(laneArray[4][3],
+				getRotationConstantForLane(4, 3));
+		b[4][0] = rotateLane(laneArray[4][4],
+				getRotationConstantForLane(4, 4));
 	}
 
 	@Override
