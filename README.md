@@ -20,6 +20,21 @@ This implementation supports the following features:
 * Input can be provided as a byte array or as an `InputStream`. Output is provided as a byte array, which will be padded with zero bits if the output length (in bits) is not exactly divisible by eight.
 * The "lane complementing transform" optimisation (suggested by the Keccak team in their implementation guide). This is enabled with a hard switch in the `KeccakState` class, but can be disabled if it harms rather than benefits performance. (On my desktop machine I see a 22% reduction in runtime with this optimisation enabled, but other platforms may differ. This package has been primarily written on the assumption that 64-bit machines will be using it.)
 
+## Performance
+
+On my desktop (Intel Core i5-4460 3.20GHz desktop, running Java OpenJDK 1.8.0_131 on Kubuntu 16.04 on 64-bit Linux 4.4.0-78) the Kecack implementation in this package correctly completes each of the ExtremelyLongMsg known-answer tests in the following times:
+
+Sponge function|Message size|Time taken|Throughput
+-|-|-|-
+SHA3-224|1GiB|16,500ms|520.60 Mbit/s
+SHA3-256|1GiB|17,290ms|496.82 Mbit/s
+SHA3-384|1GiB|21,647ms|396.82 Mbit/s
+SHA3-512|1GiB|31,007ms|277.03 Mbit/s
+
+The ExtremelyLongMsgKAT mandates the repetition of a byte sequence to give a total input message length of 1,073,741,824 bytes (1GiB). This sequence has been used to create an `InputStream` which is fed to the `apply(InputStream)` method of the corresponding `FIPS202.HashFunction` type. Consequently no disk access was involved, as the message is generated on-the-fly and fed to the Keccak sponge in blocks. So the numbers in the above table ought to represent maximum raw processing throughput.
+
+Be aware that if raw hashing performance is critical to your application then you will get considerably higher performance if you're able to use the optimized C/C++ [KeccakCodePackage](https://github.com/gvanas/KeccakCodePackage) created by the Keccak team. And you're likely to get vastly higher performance if you use a dedicated hardware implementation of the Keccak function.
+
 ## Examples of use
 
 Using the SHA-3 functions is made very simple by the `uk.org.bobulous.java.crypto.keccak.FIPS202` utility class. This utility class contains a `HashFunction` class which offers the SHA3 hash functions SHA3-224, SHA3-256, SHA3-384, and SHA3-512, and an `ExtendableOutputFunction` class which holds definitions for the SHAKE extendable-output functions SHAKE128, SHAKE256, RawSHAKE128, and RawSHAKE256.
