@@ -1,3 +1,1 @@
-I've migrated this project from GitHub over to GitLab.
-
-Please use the [GitLab repository](https://gitlab.com/Bobulous/Cryptography) from now on.
+This repository has moved to [Codeberg](https://codeberg.org/Bobulous/Cryptography). This GitHub copy has been archived (read-only mode). To contribute to this project please visit the [Codeberg repository](https://codeberg.org/Bobulous/Cryptography).
